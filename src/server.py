@@ -4,7 +4,7 @@ import asyncio
 import os
 
 # Create FastMCP server
-mcp = FastMCP("wechat-article-crawler")
+mcp = FastMCP("wechat-article-crawler", host="0.0.0.0", port=8000)
 
 # Global browser instance
 browser = WechatBrowser()
@@ -62,4 +62,5 @@ async def search_wechat_articles(account_name: str) -> str:
         return f"Error searching articles: {e}"
 
 if __name__ == "__main__":
-    mcp.run(transport='sse', host='0.0.0.0', port=8000)
+    mcp.run(transport="sse")
+
