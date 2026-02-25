@@ -1,0 +1,25 @@
+version: '3.8'
+
+services:
+  chrome:
+    image: browserless/chrome:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - MAX_CONCURRENT_SESSIONS=5
+    restart: unless-stopped
+
+  crawler:
+    build: .
+    # Or use the GHCR image once built:
+    # image: ghcr.io/monster-echo/mcp-wechat-article-crawler:latest
+    ports:
+      - "8000:8000"
+    environment:
+      - CHROME_WS_ENDPOINT=ws://chrome:3000
+      - HEADLESS=true
+    volumes:
+      - ./.wechat_profile:/app/.wechat_profile
+    depends_on:
+      - chrome
+    restart: unless-stopped
