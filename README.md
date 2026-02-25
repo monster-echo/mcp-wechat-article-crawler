@@ -104,6 +104,24 @@
 
 完成添加后，重启 OpenClaw，在其工具列表中即可看到 `get_login_qrcode`, `check_login_status`, 和 `search_wechat_articles`。
 
+### 4. n8n
+
+在 n8n 中（版本 1.74.0 及以上），你可以通过其原生支持的 MCP 功能接入此服务，从而在工作流中直接调用微信公众号文章抓取能力。
+
+1. 打开 n8n 面板，进入左侧菜单的 **Settings** -> **MCP Servers**。
+2. 点击 **Add Server** 按钮，填写名称（例如 `WeChatCrawler`）。
+3. 配置参数视你的 n8n 部署方式而定：
+   - **本地环境部署（推荐，n8n直接运行在主机上）**：
+     - **Transport type (连接方式)**：选择 `Command (stdio)`
+     - **Command (执行命令)**：填写你的虚拟环境 Python 的绝对路径：`/Volumes/MacMiniDisk/workspace/mcp-wechat-article-crawler/.venv/bin/python`
+     - **Arguments (参数)**：填写 `-m` 和 `src.server`（作为两项单独的参数添加）。
+   - **Docker 容器部署**：
+     由于 Docker 容器内默认没有 Python 和 Playwright，无法直接使用 `Command` 方式调用主机的 Python 脚本。你需要修改 `src/server.py` 的最后一行，使用 SSE 传输层：`mcp.run(transport='sse')` 启动服务，然后在 n8n 中选择 `SSE` 的连接方式并连接内网 IP 与端口。
+
+4. 设置完成后保存。返回工作流 (Workflows) 界面。
+5. 在你的节点中添加一个 **Advanced AI Agent** 节点或调用对应的 **Model Context Protocol** 工具，配置好大模型信息。
+6. 最后只需要直接给大模型输入提示词：`"请调用 get_login_qrcode 给我微信扫码登录，然后调用 search_wechat_articles 根据我的输入搜文章"` 即可接通全自动工作流！
+
 ## 如何运作
 
 1. AI 调用 `get_login_qrcode` -> 你（用户）打开返回的 Base64 图片，用手机微信扫码。
