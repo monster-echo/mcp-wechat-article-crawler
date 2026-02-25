@@ -62,4 +62,4 @@ async def search_wechat_articles(account_name: str) -> str:
         return f"Error searching articles: {e}"
 
 if __name__ == "__main__":
-    mcp.run()
+    mcp.run(transport='sse', host='0.0.0.0', port=8000)

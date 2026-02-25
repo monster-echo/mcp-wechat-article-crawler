@@ -1,2 +1,4 @@
 mcp
 playwright
+uvicorn
+starlette
