@@ -15,12 +15,25 @@ class WechatBrowser:
     async def start(self):
         if not self.playwright:
             self.playwright = await async_playwright().start()
-            self.browser_context = await self.playwright.chromium.launch_persistent_context(
-                user_data_dir=self.user_data_dir,
-                headless=False,
-                viewport={"width": 1280, "height": 800}
-            )
-            self.page = await self.browser_context.new_page()
+            
+            ws_endpoint = os.environ.get("CHROME_WS_ENDPOINT")
+            if ws_endpoint:
+                print(f"Connecting to remote browser at {ws_endpoint}")
+                self.browser = await self.playwright.chromium.connect_over_cdp(ws_endpoint)
+                # When connecting over CDP, use the default context or create a new one
+                self.browser_context = self.browser.contexts[0] if self.browser.contexts else await self.browser.new_context(viewport={"width": 1280, "height": 800})
+            else:
+                self.browser_context = await self.playwright.chromium.launch_persistent_context(
+                    user_data_dir=self.user_data_dir,
+                    headless=os.environ.get("HEADLESS", "false").lower() == "true",
+                    viewport={"width": 1280, "height": 800}
+                )
+            
+            # Use an existing page if available, else create new
+            if self.browser_context.pages:
+                self.page = self.browser_context.pages[0]
+            else:
+                self.page = await self.browser_context.new_page()
 
     async def stop(self):
         if self.browser_context:

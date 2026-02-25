@@ -37,7 +37,15 @@
 在服务器上启动服务（使用虚拟环境）：
 ```bash
 source .venv/bin/activate
-python -m src.server
+
+# 选项 1: 本地运行 (展示浏览器或无头模式)
+# HEADLESS=true 表示使用无头模式 (默认是 false，因为首次登录通常需要看到二维码面板)
+HEADLESS=true python -m src.server
+
+# 选项 2: 连接远程的 Headless Chrome 服务 (无需在本地安装 chromium)
+# 例如你可以用 docker 跑一个 browserless/chrome:
+# docker run -p 3000:3000 browserless/chrome
+CHROME_WS_ENDPOINT="ws://localhost:3000" python -m src.server
 ```
 服务默认会在 `http://0.0.0.0:8000` 启动，并提供 `/sse` 端点。
 
