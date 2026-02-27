@@ -1,7 +1,8 @@
-from mcp.server.fastmcp import FastMCP
+from mcp.server.fastmcp import FastMCP, Image
 from .browser import WechatBrowser
 import asyncio
 import os
+import base64
 
 # Create FastMCP server
 mcp = FastMCP("wechat-article-crawler", host="0.0.0.0", port=8000)
@@ -24,8 +25,8 @@ async def get_login_qrcode() -> str:
             return f"Failed to get QR code: {b64_img}"
         
         # We can format it as a markdown image or just return the base64 data URI
-        # For an MCP tool, returning the data URI is usually best so the client can render it
-        return f"data:image/png;base64,{b64_img}"
+        # For MCP tools, returning the native Image type is best so the client can render it
+        return Image(data=base64.b64decode(b64_img), format="png")
     except Exception as e:
         return f"Error: {e}"
 
