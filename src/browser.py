@@ -13,6 +13,17 @@ class WechatBrowser:
         self.token = None
 
     async def start(self):
+        # Check if the connection was dropped (e.g. by browserless timeout)
+        if hasattr(self, 'browser') and self.browser and not self.browser.is_connected():
+            print("Browser disconnected, stopping and restarting...")
+            await self.stop()
+            self.playwright = None
+
+        if self.page and self.page.is_closed():
+            print("Page closed unexpectedly, stopping and restarting...")
+            await self.stop()
+            self.playwright = None
+
         if not self.playwright:
             self.playwright = await async_playwright().start()
             
