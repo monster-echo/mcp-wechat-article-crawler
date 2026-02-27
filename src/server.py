@@ -11,7 +11,7 @@ mcp = FastMCP("wechat-article-crawler", host="0.0.0.0", port=8000)
 browser = WechatBrowser()
 
 @mcp.tool()
-async def get_login_qrcode() -> str:
+async def get_login_qrcode():
     """
     Returns the WeChat Official Account login QR code as a base64 encoded PNG image.
     The user needs to scan this image with their WeChat app to log in.
@@ -26,7 +26,7 @@ async def get_login_qrcode() -> str:
         
         # We can format it as a markdown image or just return the base64 data URI
         # For MCP tools, returning the native Image type is best so the client can render it
-        return Image(data=base64.b64decode(b64_img), format="png")
+        return Image(data=base64.b64decode(b64_img), mime_type="image/png")
     except Exception as e:
         return f"Error: {e}"
 
