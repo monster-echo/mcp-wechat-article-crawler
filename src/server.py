@@ -1,14 +1,13 @@
-from mcp.server.fastmcp import FastMCP, ImageContent
+from mcp.server.fastmcp import FastMCP
+from mcp.types import ImageContent
 from .browser import WechatBrowser
-import asyncio
-import os
-import base64
 
 # Create FastMCP server
 mcp = FastMCP("wechat-article-crawler", host="0.0.0.0", port=8000)
 
 # Global browser instance
 browser = WechatBrowser()
+
 
 @mcp.tool()
 async def get_login_qrcode():
@@ -23,10 +22,11 @@ async def get_login_qrcode():
             return "ALREADY_LOGGED_IN"
         if b64_img == "QR_CODE_NOT_FOUND" or b64_img.startswith("Error"):
             return f"Failed to get QR code: {b64_img}"
-        
+
         return ImageContent(type="image", data=b64_img, mimeType="image/png")
     except Exception as e:
         return f"Error: {e}"
+
 
 @mcp.tool()
 async def check_login_status() -> str:
@@ -39,6 +39,7 @@ async def check_login_status() -> str:
     except Exception as e:
         return f"Error checking status: {e}"
 
+
 @mcp.tool()
 async def search_wechat_articles(account_name: str) -> str:
     """
@@ -50,16 +51,16 @@ async def search_wechat_articles(account_name: str) -> str:
         articles = await browser.search_articles(account_name)
         if not articles:
             return f"No articles found for '{account_name}' or search failed."
-        
+
         # Format the output
         result = [f"Found {len(articles)} articles for {account_name}:"]
         for idx, art in enumerate(articles, 1):
             result.append(f"{idx}. {art.get('title')} - {art.get('url')}")
-            
+
         return "\n".join(result)
     except Exception as e:
         return f"Error searching articles: {e}"
 
+
 if __name__ == "__main__":
     mcp.run(transport="sse")
-
