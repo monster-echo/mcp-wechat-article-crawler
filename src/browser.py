@@ -107,7 +107,12 @@ class WechatBrowser:
         """Checks if the user has successfully logged in."""
         await self.start()
 
-        # Wait a bit to see if navigation happens
+        # If we just started a fresh browser, we might be on about:blank or another blank page.
+        # We need to explicitly navigate to the MP site so that the persistent cookies take effect.
+        if "mp.weixin.qq.com" not in self.page.url:
+            await self.page.goto("https://mp.weixin.qq.com/")
+
+        # Wait a bit to see if navigation/redirect happens
         try:
             await self.page.wait_for_load_state("networkidle", timeout=5000)
         except:

@@ -41,23 +41,25 @@ async def check_login_status() -> str:
 
 
 @mcp.tool()
-async def search_wechat_articles(account_name: str) -> str:
+async def search_wechat_articles(account_name: str, count: int = 30) -> str:
     """
     Searches for recent articles from the specified WeChat Official Account.
     Returns a list of articles with their titles and URLs.
     You MUST be logged in (scan the QR code first) before calling this.
+    `count` specifies the maximum number of articles to return (default 30).
     """
     try:
-        articles = await browser.search_articles(account_name)
+        articles = await browser.search_articles(account_name, count)
         if not articles:
             return f"No articles found for '{account_name}' or search failed."
 
-        # Format the output
-        result = [f"Found {len(articles)} articles for {account_name}:"]
-        for idx, art in enumerate(articles, 1):
-            result.append(f"{idx}. {art.get('title')} - {art.get('url')}")
-
-        return "\n".join(result)
+        # Format the output as structured JSON
+        import json
+        return json.dumps({
+            "account": account_name,
+            "count": len(articles),
+            "articles": articles
+        }, ensure_ascii=False, indent=2)
     except Exception as e:
         return f"Error searching articles: {e}"
 
