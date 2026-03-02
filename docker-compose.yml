@@ -7,6 +7,8 @@ services:
       - "3000:3000"
     environment:
       - MAX_CONCURRENT_SESSIONS=5
+      # Increase connection timeout to 1 hour (default is 60000ms)
+      - CONNECTION_TIMEOUT=3600000
     restart: unless-stopped
 
   crawler:
