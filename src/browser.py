@@ -2,6 +2,7 @@ import asyncio
 import base64
 import os
 import re
+import time
 import logging
 from playwright.async_api import async_playwright, Page, BrowserContext
 
@@ -141,7 +142,8 @@ class WechatBrowser:
                 raise Exception("Not logged in or token not found.")
 
         # Navigate to a new draft to open the editor
-        editor_url = f"https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&token={self.token}&lang=zh_CN"
+        # Add a timestamp query param to force the browser to reload instead of skipping navigation
+        editor_url = f"https://mp.weixin.qq.com/cgi-bin/appmsg?t=media/appmsg_edit_v2&action=edit&isNew=1&type=10&token={self.token}&lang=zh_CN&_t={int(time.time()*1000)}"
         await self.page.goto(editor_url)
 
         articles = []
@@ -151,7 +153,10 @@ class WechatBrowser:
             # 1. Click '超链接' (Hyperlink) button in the toolbar
             logger.info("正在查找 '超链接' 按钮...")
             await self.page.wait_for_selector("#js_editor_insertlink", timeout=30000)
-            await self.page.click("#js_editor_insertlink")
+            # Add no_wait_after=True and force=True to prevent Playwright from deadlocking
+            await self.page.click(
+                "#js_editor_insertlink", no_wait_after=True, force=True
+            )
             logger.info("已点击 '超链接' 按钮。")
 
             # 2. Wait for the dialog to open, click "其他公众号"
@@ -269,12 +274,19 @@ class WechatBrowser:
             articles = articles[:max_articles]
             logger.info(f"成功提取了 {len(articles)} 篇文章！")
 
-            # Close the dialog by pressing Escape to ensure we can search again cleanly
-            logger.info("正在关闭对话框...")
+            # Try to explicitly close the dialog by finding and clicking the '取消' button
+            logger.info("尝试点击 '取消' 按钮关闭弹窗...")
+            cancel_btn = self.page.locator("button:has-text('取消')").first
+            if await cancel_btn.count() > 0 and await cancel_btn.is_visible():
+                await cancel_btn.click(no_wait_after=True, force=True)
+                await self.page.wait_for_timeout(1000)
+
+            # Fallback for closing the dialog by pressing Escape to ensure we can search again cleanly
+            logger.info("发送 Escape 按键以防弹窗仍未关闭...")
             await self.page.keyboard.press("Escape")
             await self.page.wait_for_timeout(1000)
             await self.page.keyboard.press("Escape")
-            logger.info("对话框已关闭。")
+            logger.info("超链接弹窗及搜索过程已结束。")
 
             return articles
         except Exception as e:
