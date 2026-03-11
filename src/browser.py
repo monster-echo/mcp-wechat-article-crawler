@@ -18,31 +18,56 @@ class WechatBrowser:
         self.user_data_dir = os.path.join(os.getcwd(), ".wechat_profile")
         self.token = None
 
+    def _handle_disconnect(self, *args, **kwargs):
+        logger.warning("Browser disconnected. Resetting state for auto-restart on next use.")
+        self.playwright = None
+        self.browser = None
+        self.browser_context = None
+        self.page = None
+
     async def start(self):
         # Check if the connection was dropped (e.g. by browserless timeout)
-        if (
-            hasattr(self, "browser")
-            and self.browser
-            and not self.browser.is_connected()
-        ):
-            print("Browser disconnected, stopping and restarting...")
-            await self.stop()
-            self.playwright = None
+        needs_restart = False
+        try:
+            if (
+                hasattr(self, "browser")
+                and self.browser
+                and getattr(self.browser, "is_connected", lambda: True)() is False
+            ):
+                logger.warning("Browser disconnected detected in start(), stopping and restarting...")
+                needs_restart = True
 
-        if self.page and self.page.is_closed():
-            print("Page closed unexpectedly, stopping and restarting...")
-            await self.stop()
-            self.playwright = None
+            elif self.page and getattr(self.page, "is_closed", lambda: False)():
+                logger.warning("Page closed unexpectedly, stopping and restarting...")
+                needs_restart = True
 
-        if not self.playwright:
+            elif hasattr(self, "browser_context") and self.browser_context:
+                # Test context by accessing pages
+                try:
+                    _ = self.browser_context.pages
+                except Exception:
+                    logger.warning("Browser context error, stopping and restarting...")
+                    needs_restart = True
+        except Exception as e:
+            logger.warning(f"Error while checking browser health: {e}")
+            needs_restart = True
+
+        if needs_restart:
+            await self.stop()
+            self._handle_disconnect()
+
+        if not getattr(self, "playwright", None):
             self.playwright = await async_playwright().start()
 
             ws_endpoint = os.environ.get("CHROME_WS_ENDPOINT")
             if ws_endpoint:
-                print(f"Connecting to remote browser at {ws_endpoint}")
+                logger.info(f"Connecting to remote browser at {ws_endpoint}")
                 self.browser = await self.playwright.chromium.connect_over_cdp(
                     ws_endpoint
                 )
+                # Register disconnect handler
+                self.browser.on("disconnected", self._handle_disconnect)
+
                 # When connecting over CDP, use the default context or create a new one
                 self.browser_context = (
                     self.browser.contexts[0]
@@ -59,18 +84,32 @@ class WechatBrowser:
                         viewport={"width": 1280, "height": 800},
                     )
                 )
+                # Register disconnect handler for persistent context if possible
+                if hasattr(self.browser_context, "browser") and self.browser_context.browser:
+                    self.browser_context.browser.on("disconnected", self._handle_disconnect)
+                self.browser_context.on("close", self._handle_disconnect)
 
             # Use an existing page if available, else create new
             if self.browser_context.pages:
                 self.page = self.browser_context.pages[0]
             else:
                 self.page = await self.browser_context.new_page()
+                
+            # Register close handler for the page to ensure we reset state if the page gets unexpectedly closed
+            self.page.on("close", self._handle_disconnect)
 
     async def stop(self):
-        if self.browser_context:
-            await self.browser_context.close()
-        if self.playwright:
-            await self.playwright.stop()
+        try:
+            if getattr(self, "browser_context", None):
+                await self.browser_context.close()
+        except Exception as e:
+            logger.warning(f"Error closing browser context: {e}")
+            
+        try:
+            if getattr(self, "playwright", None):
+                await self.playwright.stop()
+        except Exception as e:
+            logger.warning(f"Error stopping playwright: {e}")
 
     async def get_login_qrcode(self) -> str:
         """Navigates to the login page and returns the QR code as a base64 PNG string."""
@@ -292,5 +331,3 @@ class WechatBrowser:
         except Exception as e:
             logger.error(f"文章搜索过程失败: {e}", exc_info=True)
             raise Exception(f"Failed during article search: {e}")
-
-        return articles
