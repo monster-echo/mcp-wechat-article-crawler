@@ -1,18 +1,16 @@
 import json
 import logging
+import os
 from mcp.server.fastmcp import FastMCP
 from mcp.types import ImageContent
 from .browser import WechatBrowser
 
+# Configure logging globally for all modules
+logging.basicConfig(
+    level=os.environ.get("LOG_LEVEL", "INFO").upper(),
+    format="%(asctime)s - %(levelname)s - %(message)s"
+)
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
-# Avoid duplicated logs if already configured elsewhere
-if not logger.handlers:
-    console_handler = logging.StreamHandler()
-    console_handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-    )
-    logger.addHandler(console_handler)
 
 # Create FastMCP server
 mcp = FastMCP("wechat-article-crawler", host="0.0.0.0", port=8000)
@@ -70,9 +68,6 @@ async def search_wechat_articles(account_name: str, count: int = 30) -> str:
     `count` specifies the maximum number of articles to return (default 30).
     """
     try:
-        logger.info(
-            f"收到 MCP 搜索请求！目标公众号: '{account_name}'，预期提取数量: {count}"
-        )
         articles = await browser.search_articles(account_name, count)
         if not articles:
             logger.warning(f"未能找到公众号 '{account_name}' 的任何文章。")

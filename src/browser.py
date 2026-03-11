@@ -190,34 +190,34 @@ class WechatBrowser:
             logger.info(f"开始搜索公众号文章: '{account_name}'")
 
             # 1. Click '超链接' (Hyperlink) button in the toolbar
-            logger.info("正在查找 '超链接' 按钮...")
+            logger.debug("正在查找 '超链接' 按钮...")
             await self.page.wait_for_selector("#js_editor_insertlink", timeout=30000)
             # Add no_wait_after=True and force=True to prevent Playwright from deadlocking
             await self.page.click(
                 "#js_editor_insertlink", no_wait_after=True, force=True
             )
-            logger.info("已点击 '超链接' 按钮。")
+            logger.debug("已点击 '超链接' 按钮。")
 
             # 2. Wait for the dialog to open, click "其他公众号"
-            logger.info("等待超链接对话框打开...")
+            logger.debug("等待超链接对话框打开...")
             dialog_selector = "h3.weui-desktop-dialog__title:has-text('编辑超链接')"
             await self.page.wait_for_selector(
                 dialog_selector, state="visible", timeout=10000
             )
-            logger.info("对话框已打开。")
+            logger.debug("对话框已打开。")
 
             # Click "选择其他账号" if it exists
             btn_selector = "button:has-text('选择其他账号')"
-            logger.info("检查是否有 '选择其他账号' 按钮...")
+            logger.debug("检查是否有 '选择其他账号' 按钮...")
             if await self.page.locator(btn_selector).count() > 0:
                 await self.page.click(btn_selector)
-                logger.info("已点击 '选择其他账号' 按钮。")
+                logger.debug("已点击 '选择其他账号' 按钮。")
                 await self.page.wait_for_timeout(2000)
             else:
-                logger.info("未找到 '选择其他账号' 按钮，继续下一步...")
+                logger.debug("未找到 '选择其他账号' 按钮，继续下一步...")
 
             # Now find the account search input
-            logger.info("正在查找账号搜索输入框...")
+            logger.debug("正在查找账号搜索输入框...")
             account_search_input = (
                 "input[placeholder='输入文章来源的账号名称或微信号，回车进行搜索']"
             )
@@ -226,22 +226,22 @@ class WechatBrowser:
             )
             await self.page.fill(account_search_input, account_name)
             await self.page.press(account_search_input, "Enter")
-            logger.info(f"已输入账号名称 '{account_name}' 并按下回车。")
+            logger.info(f"已输入账号名称 '{account_name}' 并按下回车。等待搜索结果...")
 
             # Wait for search results
             await self.page.wait_for_timeout(3000)
-            logger.info("已等待 3 秒获取搜索结果。")
+            logger.debug("已等待 3 秒获取搜索结果。")
 
             # Try clicking the exact matching account if possible, or fallback to the first result
             # We use a less strict locator because of whitespace and slight name variations
             try:
-                logger.info(f"尝试点击完全匹配的账号 '{account_name}'...")
+                logger.debug(f"尝试点击完全匹配的账号 '{account_name}'...")
                 account_item = self.page.locator(
                     f"li.inner_link_account_item:has(strong.inner_link_account_nickname:has-text('{account_name}'))"
                 ).first
                 await account_item.wait_for(state="visible", timeout=5000)
                 await account_item.click()
-                logger.info("已点击完全匹配的账号。")
+                logger.info(f"已点击匹配的账号 '{account_name}'。")
             except Exception:
                 logger.warning(
                     f"完全匹配 '{account_name}' 失败或超时，尝试仅点击第一个搜索结果..."
@@ -255,11 +255,11 @@ class WechatBrowser:
                 logger.info("已点击搜索结果中的第一个账号。")
 
             # Wait for the article list to load
-            logger.info("等待文章列表加载...")
+            logger.debug("等待文章列表加载...")
             await self.page.wait_for_selector(
                 ".inner_link_article_list label.inner_link_article_item", timeout=10000
             )
-            logger.info("文章列表已加载。")
+            logger.debug("文章列表已加载。")
             await self.page.wait_for_timeout(
                 1000
             )  # give it a moment to render completely
@@ -314,18 +314,18 @@ class WechatBrowser:
             logger.info(f"成功提取了 {len(articles)} 篇文章！")
 
             # Try to explicitly close the dialog by finding and clicking the '取消' button
-            logger.info("尝试点击 '取消' 按钮关闭弹窗...")
+            logger.debug("尝试点击 '取消' 按钮关闭弹窗...")
             cancel_btn = self.page.locator("button:has-text('取消')").first
             if await cancel_btn.count() > 0 and await cancel_btn.is_visible():
                 await cancel_btn.click(no_wait_after=True, force=True)
                 await self.page.wait_for_timeout(1000)
 
             # Fallback for closing the dialog by pressing Escape to ensure we can search again cleanly
-            logger.info("发送 Escape 按键以防弹窗仍未关闭...")
+            logger.debug("发送 Escape 按键以防弹窗仍未关闭...")
             await self.page.keyboard.press("Escape")
             await self.page.wait_for_timeout(1000)
             await self.page.keyboard.press("Escape")
-            logger.info("超链接弹窗及搜索过程已结束。")
+            logger.debug("超链接弹窗及搜索过程已结束。")
 
             return articles
         except Exception as e:
