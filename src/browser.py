@@ -89,7 +89,8 @@ class WechatBrowser:
                     self.browser_context.browser.on("disconnected", self._handle_disconnect)
                 self.browser_context.on("close", self._handle_disconnect)
 
-            # Use an existing page if available, else create new
+        # Ensure page exists and is valid; this catches cases where playwright is alive but page is missing.
+        if not getattr(self, "page", None) or self.page.is_closed():
             if self.browser_context.pages:
                 self.page = self.browser_context.pages[0]
             else:
@@ -175,6 +176,9 @@ class WechatBrowser:
         self, account_name: str, max_articles: int = 30
     ) -> list[dict]:
         """Searches for articles from a specific official account."""
+        # Ensure the browser is started/re-started before trying to execute any page operations
+        await self.start()
+
         if not self.token:
             status = await self.check_login_status()
             if status != "LOGGED_IN":
